@@ -9,6 +9,7 @@
 #include <utility>
 #include <algorithm>
 #include <iomanip>
+#include <bitset>
 #include "tinycon.h"
 #include "rlutil.h"
 #include "parse.hpp"
@@ -30,6 +31,7 @@ using std::setw;
 using std::left;
 using std::right;
 using std::streamsize;
+using std::bitset;
 using nim::int32;
 
 #define PILE_MAX 10
@@ -148,8 +150,54 @@ namespace nim
 
             void CPUTurn()
             {
-                cout << CPUName << "> " << "take 0 from 0\n";
+                bitset<4> state(0);
+
+                for (auto i = 3; i >= 0; --i)
+                {
+                    // odd check for each bit
+                    state.set(i, !!((((Piles[0] >> i) & 1) + ((Piles[1] >> i) & 1) + ((Piles[2] >> i) & 1)) & 1));
+                }
+
+                auto move_made = false;
+                for (auto i = 3; i >= 0; --i)
+                {
+                    // highest set bit
+                    if (state.test(i))
+                    {
+                        for (auto j = 0; j < 3; ++j)
+                        {
+                            // pile with highest set bit
+                            if ((Piles[j] >> i) & 1)
+                            {
+                                // xor for state 0000
+                                auto target = (state ^ bitset<4>(Piles[j])).to_ulong();
+                                CPUTake(Piles[j] - int32(target), j);
+                                move_made = true;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                // no good moves, take 1 from biggest pile
+                if (!move_made)
+                {
+                    auto max_index = 0;
+                    for (auto j = 1; j < 3; ++j)
+                    {
+                        if (Piles[j] > Piles[max_index]) { max_index = j; }
+                    }
+                    CPUTake(1, max_index);
+                }
+
                 NextTurn();
+            }
+
+            void CPUTake(int32 num, int32 pile)
+            {
+                cout << CPUName << "> " << "take " << num << " from " << (pile + 1) << "\n";
+                Piles[pile] -= num;
             }
 
             void UpdatePrompt()
@@ -340,7 +388,7 @@ namespace nim
         {
             detail::NimConsole console(m_impl);
             game.Console = &console;
-            cout << "  Would you like to play against a CPU or a human? (cpu|human)" << "\n";
+            cout << "  Would you like to play against a CPU or a human? {cpu|human}" << "\n";
             do
             {
                 cout << "> ";
@@ -451,7 +499,7 @@ namespace nim
                     lowercase(arg);
                     if (arg == "me")
                     {
-                        cout << "You're on your own buddy.\n";
+                        cout << "  You're on your own buddy.\n";
                         return;
                     }
                 }
@@ -518,7 +566,7 @@ namespace nim
             auto parts2 = parts[2];
             lowercase(parts2);
             auto has_from = (parts2 == "from");
-            if (arg_count >= (4 + (has_from ? 1 : 0)))
+            if (arg_count >= uint32(4 + (has_from ? 1 : 0)))
             {
                 cout << print_err(ERR_ARGUMENT) << "Too many arguments. Type 'help take' for usage details.\n";
                 return;
@@ -651,7 +699,7 @@ namespace nim
             auto search = ColorsMap.find(color_name);
             if (search == ColorsMap.end())
             {
-                cout << print_err(ERR_ARGUMENT) << "Could not find color named '" << color_name << "'. Type 'help take' for usage details.\n";
+                cout << print_err(ERR_ARGUMENT) << "Could not find color named '" << color_name << "'. Type 'help color' for usage details.\n";
                 return;
             }
             rlutil::setColor(search->second);
