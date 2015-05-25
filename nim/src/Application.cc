@@ -34,7 +34,8 @@ using std::streamsize;
 using std::bitset;
 using nim::int32;
 
-#define PILE_MAX 10
+#define PILE_MAX 20
+#define PILE_MIN 10
 
 #define CONSOLE_WIDTH 80
 #define DESCRIPTION_WIDTH 50
@@ -150,27 +151,29 @@ namespace nim
 
             void CPUTurn()
             {
-                bitset<4> state(0);
+                // int(ceil(log2(PILE_MAX)))
+#define BITSET_MAX 5
+                bitset<BITSET_MAX> state(0);
 
-                for (auto i = 3; i >= 0; --i)
+                for (auto i = (BITSET_MAX - 1); i >= 0; --i)
                 {
                     // odd check for each bit
                     state.set(i, !!((((Piles[0] >> i) & 1) + ((Piles[1] >> i) & 1) + ((Piles[2] >> i) & 1)) & 1));
                 }
 
                 auto move_made = false;
-                for (auto i = 3; i >= 0; --i)
+                for (auto i = (BITSET_MAX - 1); i >= 0; --i)
                 {
                     // highest set bit
                     if (state.test(i))
                     {
-                        for (auto j = 0; j < 3; ++j)
+                        for (auto j = 0; j < (BITSET_MAX - 1); ++j)
                         {
                             // pile with highest set bit
                             if ((Piles[j] >> i) & 1)
                             {
-                                // xor for state 0000
-                                auto target = (state ^ bitset<4>(Piles[j])).to_ulong();
+                                // xor for state 00000
+                                auto target = (state ^ bitset<BITSET_MAX>(Piles[j])).to_ulong();
                                 CPUTake(Piles[j] - int32(target), j);
                                 move_made = true;
                                 break;
@@ -184,7 +187,7 @@ namespace nim
                 if (!move_made)
                 {
                     auto max_index = 0;
-                    for (auto j = 1; j < 3; ++j)
+                    for (auto j = 1; j < (BITSET_MAX - 1); ++j)
                     {
                         if (Piles[j] > Piles[max_index]) { max_index = j; }
                     }
@@ -885,7 +888,7 @@ namespace nim
 
         void Pile::Rnd()
         {
-            count = static_cast<int>((::rand() % PILE_MAX) + 1);
+            count = PILE_MIN + static_cast<int>((::rand() % (PILE_MAX - PILE_MIN)));
         }
 
         Pile::Pile()
